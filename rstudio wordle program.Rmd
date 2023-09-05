@@ -1,0 +1,991 @@
+```{r}
+library(dplyr)
+library(tidyr)
+library(jsonlite)
+library(httr)
+library(stringr)
+library(ggplot2)
+library(rvest)
+library(xml2)
+library(data.table)
+
+url = "http://www.mieliestronk.com/corncob_lowercase.txt"
+
+page = httr::GET(url)
+
+
+
+if (page$status_code == 200) {
+  print("response good")
+} else {
+  print("response error")
+}
+
+dic = base::rawToChar(page$content) 
+
+full.dic = data.frame(str_extract_all(dic,  "\\b[[:alnum:]']+\\b"))
+
+colnames(full.dic) = "dictionary"
+
+five.word = data.frame(full.dic[nchar(as.character(full.dic$dictionary)) == 5,])
+
+five.word = fread("five_words.csv")
+
+five.word = five.word[,2] 
+five.word$V2 = tolower(five.word$V2)
+five.word = five.word[-1,1]
+
+colnames(five.word) = "dictionary"
+
+alphabet = c("a","b","c","d","e","f", "g", "h","i","j","k","l","m",
+              "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x",
+              "y", "z")
+
+f.alpha = c("^a","^b","^c","^d","^e","^f", "^g", "^h","^i","^j","^k","^l","^m",
+                      "^n", "^o", "^p", "^q", "^r", "^s", "^t", "^u", "^v", "^w", "^x",
+                      "^y", "^z")
+
+string.5.w = toString(five.word)
+
+string.counter=function(pattern){  
+  counts=NULL
+  for(i in 1:length(string.5.w)){
+    counts[i]=length(attr(gregexpr(pattern,string.5.w[i])[[1]], "match.length")[attr(gregexpr(pattern,string.5.w[i])[[1]], "match.length")>0])
+  }
+  return(counts)
+}
+
+alphabet.dis = data.frame(distribution = sapply(alphabet,string.counter))
+
+alphabet.dis$percentage = (alphabet.dis[,1] / nrow(five.word))*100
+
+plot(alphabet.dis$distribution) #S/E/A/L/T/R/I/O are most common letters
+
+
+link = "https://wordfinder.yourdictionary.com/wordle/answers/"
+page = read_html(link)
+answer = data.frame("answer" = page %>% html_nodes("td.c--l") %>% html_text()) 
+answer[,1] = tolower(answer[,1])
+
+#make a list of bigrams
+
+BIAGRAM = c("th","en","ng","he","ed","of","in","to","al","er","it","de","an","ou","se","re","ea","le","nd","hi","sa","at","is","si","on","or","ar","nt","ti","ve","ha","as","ra","es","te","ld","st","et","ur")
+
+biagram.dis = data.frame(distribution = sapply(BIAGRAM,string.counter))
+
+biagram.dis$percentage = (biagram.dis[,1] / nrow(five.word))*100 
+
+alp = alphabet
+test = five.word
+
+location_counter_1 = function(letter) {
+  j = 0
+  
+  for (i in 1:nrow(test)){
+    if (substring(test[i,1], 1, 1) == letter) {
+      j = j + 1 
+      
+    } else {
+      next
+    }
+  }
+  return(j)
+}  
+
+
+
+location_counter_2 = function(letter) {
+  j = 0
+  
+  for (i in 1:nrow(test)){
+    if (substring(test[i,1], 2, 2) == letter) {
+      j = j + 1 
+      
+    } else {
+      next
+    }
+  }
+  return(j)
+}  
+
+location_counter_3 = function(letter) {
+  j = 0
+  
+  for (i in 1:nrow(test)){
+    if (substring(test[i,1], 3, 3) == letter) {
+      j = j + 1 
+      
+    } else {
+      next
+    }
+  }
+  return(j)
+}  
+
+location_counter_4 = function(letter) {
+  j = 0
+  
+  for (i in 1:nrow(test)){
+    if (substring(test[i,1], 4, 4) == letter) {
+      j = j + 1 
+      
+    } else {
+      next
+    }
+  }
+  return(j)
+}  
+
+location_counter_5 = function(letter) {
+  j = 0
+  
+  for (i in 1:nrow(test)){
+    if (substring(test[i,1], 5, 5) == letter) {
+      j = j + 1 
+      
+    } else {
+      next
+    }
+  }
+  return(j)
+}  
+
+
+loc1_m = data.frame("letter" = sapply(alphabet,location_counter_1))
+loc1_m$percentage = (loc1_m[,1]/ nrow(test)) * 100
+loc1_m$alp = alphabet
+loc2_m = data.frame("letter" = sapply(alphabet,location_counter_2))
+loc2_m$percentage = (loc2_m[,1]/ nrow(test)) * 100
+loc2_m$alp = alphabet
+loc3_m = data.frame("letter" = sapply(alphabet,location_counter_3))
+loc3_m$percentage = (loc3_m[,1]/ nrow(test)) * 100 
+loc3_m$alp = alphabet
+loc4_m = data.frame("letter" = sapply(alphabet,location_counter_4))
+loc4_m$percentage = (loc4_m[,1]/ nrow(test)) * 100
+loc4_m$alp = alphabet
+loc5_m = data.frame("letter" = sapply(alphabet,location_counter_5))
+loc5_m$percentage = (loc5_m[,1]/ nrow(test)) * 100 
+loc5_m$alp = alphabet
+
+
+######
+
+starts.with = function(key) {
+  j = 0
+  for (i in 1:nrow(five.word)) {
+    if (str_detect(five.word[i,1], key) == TRUE) {
+      j = j + 1
+    } else {
+      next
+    }
+  }
+  return(j)
+}
+
+starts.with.count = data.frame(sapply(f.alpha,starts.with))
+starts.with.count$percentage = (starts.with.count[,1]/ nrow(five.word))*100
+
+s.words = data.frame()
+
+for( i in 1:nrow(five.word)) {
+  if (str_detect(five.word[i,1], "^s") == TRUE) {
+    s.words = five.word[i,]
+    i = i + 1
+  } else { 
+    next
+  }
+}
+
+string.counter.s =function(pattern){  
+  counts=NULL
+  for(i in 1:nrow(s.words)){
+    counts[i]=length(attr(gregexpr(pattern,s.words[i,1])[[1]], "match.length")[attr(gregexpr(pattern,s.words[i,1])[[1]], "match.length")>0])
+  }
+  return(counts)
+}
+
+
+s.words = data.frame(five.word[str_detect(five.word[,1], "^s"),])
+colnames(s.words) = c("words")
+
+#biagram.S = data.frame(sapply(BIAGRAM,string.counter.s))
+
+word_remover = function(data, letter) {
+  test = data.frame( "test" = 
+                        as.character(data[!grepl(letter, data[,1]),1]))
+
+  return(test)
+}
+
+
+
+
+
+
+#Yellow 
+location_remover = function(data, letter, position) {
+  
+  test = 
+    data.frame( "test" = as.character(data[!(substring(data[,1], position, position) == letter),]))
+  
+  
+  return(test)
+}  
+
+#Green
+location_conf = function(data, letter, position) {
+  
+  test = 
+    data.frame( "test" = as.character(data[(substring(data[,1], position, position) == letter),]))
+  
+  return(test)
+}  
+
+alp = alphabet
+
+#Grey
+list_rem = function(data, letter){
+  for (i in 1:length(data)) {
+    
+    temp = data[i]
+    
+    if ((temp == letter)) {
+      data = data[-i]
+      break
+    } else {
+      i = 1 + i 
+    }
+  }
+  return(data)
+}
+
+
+#okay now next step is removing characters that cannot be contained in the list 
+test = five.word
+alp = alphabet
+
+#WIP
+
+#letter stats 
+
+loc1 = data.frame("letter" = sapply(alp,location_counter_1))
+loc1$percentage = (loc1[,1]/ nrow(test))
+loc1$alp = alp
+
+loc2 = data.frame("letter" = sapply(alp,location_counter_2))
+loc2$percentage = (loc2[,1]/ nrow(test))
+loc2$alp = alp
+
+loc3 = data.frame("letter" = sapply(alp,location_counter_3))
+loc3$percentage = (loc3[,1]/ nrow(test))
+loc3$alp = alp
+
+loc4 = data.frame("letter" = sapply(alp,location_counter_4))
+loc4$percentage = (loc4[,1]/ nrow(test))
+loc4$alp = alp
+
+loc5 = data.frame("letter" = sapply(alp,location_counter_5))
+loc5$percentage = (loc5[,1]/ nrow(test))
+loc5$alp = alp
+
+vowels = c("a", "e", "i", "o", "u", "y")
+
+consos = c("b","c","d","f", "g", "h","j","k","l","m",
+            "n", "p", "q", "r", "s", "t", "v", "w", "x",
+            "z")
+
+### clear 
+
+
+#####
+#yellow word confirmation (basically returns a list of words that contain all yellow words:
+
+#https://www.rdocumentation.org/packages/naniar/versions/0.6.1
+
+#fucking what the fuck. fuck this dumb shit. FUKKKKKKKKK
+
+#str = c("e") #checks if in list 
+
+#test2 = test$test #first subset
+
+#plz = data.frame(sapply(str, grepl, test2))  #shows which ones are false
+
+#plz$word = test2
+
+#plz[(plz == "FALSE")] = NA
+
+#plz = na.omit(plz)
+
+#test = plz[,(length(plz)), drop = FALSE] #this will be the final return 
+
+
+#########
+
+link = "https://wordfinder.yourdictionary.com/wordle/answers/"
+page = read_html(link)
+answer = data.frame("answer" = page %>% html_nodes("td.c--l") %>% html_text()) 
+answer[,1] = tolower(answer[,1])
+#^^^ previous answer list bad data. #####################
+
+
+
+location_counter_1a = function(letter) {
+  j = 0
+  
+  for (i in 1:nrow(answer)){
+    if (substring(answer[i,1], 1, 1) == letter) {
+      j = j + 1 
+      
+    } else {
+      next
+    }
+  }
+  return(j)
+}  
+
+
+
+location_counter_2a = function(letter) {
+  j = 0
+  
+  for (i in 1:nrow(answer)){
+    if (substring(answer[i,1], 2, 2) == letter) {
+      j = j + 1 
+      
+    } else {
+      next
+    }
+  }
+  return(j)
+}  
+
+location_counter_3a = function(letter) {
+  j = 0
+  
+  for (i in 1:nrow(answer)){
+    if (substring(answer[i,1], 3, 3) == letter) {
+      j = j + 1 
+      
+    } else {
+      next
+    }
+  }
+  return(j)
+}  
+
+location_counter_4a = function(letter) {
+  j = 0
+  
+  for (i in 1:nrow(answer)){
+    if (substring(answer[i,1], 4, 4) == letter) {
+      j = j + 1 
+      
+    } else {
+      next
+    }
+  }
+  return(j)
+}  
+
+location_counter_5a = function(letter) {
+  j = 0
+  
+  for (i in 1:nrow(answer)){
+    if (substring(answer[i,1], 5, 5) == letter) {
+      j = j + 1 
+      
+    } else {
+      next
+    }
+  }
+  return(j)
+}  
+
+#clear
+
+#word recommender based on previous answers:
+loc1a = data.frame("letter" = sapply(alp,location_counter_1a))
+loc1a$percentage = (loc1a[,1]/ nrow(test))*100
+loc1a$alp = alp
+
+
+
+loc2a = data.frame("letter" = sapply(alp,location_counter_2a))
+loc2a$percentage = (loc2a[,1]/ nrow(test))*100
+loc2a$alp = alp
+
+
+
+loc3a = data.frame("letter" = sapply(alp,location_counter_3a))
+loc3a$percentage = (loc3a[,1]/ nrow(test))*100
+loc3a$alp = alp
+
+
+
+loc4a = data.frame("letter" = sapply(alp,location_counter_4a))
+loc4a$percentage = (loc4a[,1]/ nrow(test))*100
+loc4a$alp = alp
+
+
+
+
+loc5a = data.frame("letter" = sapply(alp,location_counter_5a))
+loc5a$percentage = (loc5a[,1]/ nrow(test))*100
+loc5a$alp = alp
+
+
+
+
+test$chance = " "
+
+for(i in 1:nrow(test)) {
+  
+  temp1 = substring(test[i,1],1,1)
+  per1 = loc1_m[loc1_m[,3] %in% temp1,2] * 
+    loc1[loc1[,3] %in% temp1,2] *
+    loc1a[loc1a[,3] %in% temp1,2]
+  temp2 = substring(test[i,1],2,2)
+  per2 = loc2_m[loc2_m[,3] %in% temp2,2] * 
+    loc2[loc2[,3] %in% temp2,2] *
+    loc2a[loc2a[,3] %in% temp2,2]
+  temp3 = substring(test[i,1],3,3)
+  per3 = loc3_m[loc3_m[,3] %in% temp3,2] * 
+    loc3[loc3[,3] %in% temp3,2] *
+    loc3a[loc3a[,3] %in% temp3,2]
+  temp4 = substring(test[i,1],4,4)
+  per4 = loc4_m[loc4_m[,3] %in% temp4,2] * 
+    loc4[loc4[,3] %in% temp4,2] *
+    loc4a[loc4a[,3] %in% temp4,2]
+  temp5 = substring(test[i,1],5,5)
+  per5 = loc5_m[loc5_m[,3] %in% temp5,2] * 
+    loc5[loc5[,3] %in% temp5,2] *
+    loc5a[loc5a[,3] %in% temp5,2]
+  
+  test[i,2] = (per1*per2*per3*per4*per5)
+  
+  
+  
+}
+word.in = test[which.max(test$chance),1] %>% as.character()
+
+
+print(word.in)
+
+
+
+######MIGHT DELETE  #stats for individual letter position
+#for location 1 
+
+total = sum(loc1_m$letter)
+#for consonants
+
+consos_count_1 = sum(loc1_m[(loc1_m$alp %in% consos == 1),1])
+consos_per_1 = (consos_count_1/total)
+
+#for vowels 
+
+
+vow_per_1 = (1 - consos_per_1)
+
+#for location 2 
+
+total = sum(loc2_m$letter)
+#for consonants
+
+consos_count_2 = sum(loc2_m[(loc2_m$alp %in% consos == 1),1])
+consos_per_2 = consos_count_2/total
+
+#for vowels 
+
+vow_count = sum(loc2_m[(loc2_m$alp %in% vowels == 1),1])
+vow_per_2 = (1 - consos_per_2)
+
+#for location 3
+
+total = sum(loc3_m$letter)
+#for consonants
+
+consos_count_3 = sum(loc3_m[(loc3_m$alp %in% consos == 1),1])
+consos_per_3 = consos_count_3/total
+
+#for vowels 
+
+vow_count = sum(loc3_m[(loc3_m$alp %in% vowels == 1),1])
+vow_per_3 = (1 - consos_per_3)
+
+
+#for location 4 
+
+total = sum(loc4_m$letter)
+#for consonants
+
+consos_count_4 = sum(loc4_m[(loc4_m$alp %in% consos == 1),1])
+consos_per_4 = consos_count_4/total
+
+#for vowels 
+
+vow_count = sum(loc4_m[(loc4_m$alp %in% vowels == 1),1])
+vow_per_4 = (1 - consos_per_4)
+
+
+#for location 5 
+
+total = sum(loc5_m$letter)
+#for consonants
+
+consos_count_5 = sum(loc5_m[(loc5_m$alp %in% consos == 1),1])
+consos_per_5 = consos_count_5/total
+
+#for vowels 
+
+vow_count = sum(loc5_m[(loc5_m$alp %in% vowels == 1),1])
+vow_per_5 = (1 - consos_per_5)
+
+test = five.word
+
+###SOMETHING WRONG WILL RETURN THE FIRST for some reason
+guesser = function(test, alp) {
+  
+  
+  loc1 = data.frame("letter" = sapply(alp,location_counter_1))
+  loc1$percentage = (loc1[,1]/ nrow(test))*100
+  loc1$alp = alp
+  
+  loc1[which.max(loc1[,2]),]
+  
+  loc2 = data.frame("letter" = sapply(alp,location_counter_2))
+  loc2$percentage = (loc2[,1]/ nrow(test))*100
+  loc2$alp = alp
+  
+  loc2[which.max(loc2[,2]),]
+  
+  loc3 = data.frame("letter" = sapply(alp,location_counter_3))
+  loc3$percentage = (loc3[,1]/ nrow(test))*100
+  loc3$alp = alp
+  
+  loc3[which.max(loc3[,2]),]
+  
+  loc4 = data.frame("letter" = sapply(alp,location_counter_4))
+  loc4$percentage = (loc4[,1]/ nrow(test))*100
+  loc4$alp = alp
+  
+  loc4[which.max(loc4[,2]),]
+  
+  
+  loc5 = data.frame("letter" = sapply(alp,location_counter_5))
+  loc5$percentage = (loc5[,1]/ nrow(test))*100
+  loc5$alp = alp
+  
+  loc5[which.max(loc5[,2]),]
+  
+
+  
+  test$chance = ""
+  
+  for(i in 1:nrow(test)){
+    temp1 = substring(test[i,1],1,1)
+  per1 = loc1_m[loc1_m[,3] %in% temp1,2] * 
+    loc1[loc1[,3] %in% temp1,2] *
+    loc1a[loc1a[,3] %in% temp1,2]
+  temp2 = substring(test[i,1],2,2)
+  per2 = loc2_m[loc2_m[,3] %in% temp2,2] * 
+    loc2[loc2[,3] %in% temp2,2] *
+    loc2a[loc2a[,3] %in% temp2,2]
+  temp3 = substring(test[i,1],3,3)
+  per3 = loc3_m[loc3_m[,3] %in% temp3,2] * 
+    loc3[loc3[,3] %in% temp3,2] *
+    loc3a[loc3a[,3] %in% temp3,2]
+  temp4 = substring(test[i,1],4,4)
+  per4 = loc4_m[loc4_m[,3] %in% temp4,2] * 
+    loc4[loc4[,3] %in% temp4,2] *
+    loc4a[loc4a[,3] %in% temp4,2]
+  temp5 = substring(test[i,1],5,5)
+  per5 = loc5_m[loc5_m[,3] %in% temp5,2] * 
+    loc5[loc5[,3] %in% temp5,2] *
+    loc5a[loc5a[,3] %in% temp5,2]
+  
+  test[i,2] = (per1*per2*per3*per4*per5)
+  }
+  guess = test[which.max(test$chance),1] %>% as.character()
+  
+  return(guess)
+  
+}
+ 
+must_contain = function(test, alp, 
+                         letter1 = "no", 
+                         letter2 = "no", 
+                         letter3 = "no", 
+                         letter4 = "no",
+                         letter5 = "no") {
+  
+  str = c()
+  
+  no = "no"
+  
+  if(letter1 != no){
+    
+    str = append(str, letter1)
+    
+  }  
+  if(letter2 != no){
+    
+    str = append(str, letter2)
+    
+  }  
+  if(letter3 != no){
+    
+    str = append(str, letter3)
+    
+  }  
+  if(letter4 != no){
+    
+    str = append(str, letter4)
+    
+  }  
+  if(letter5 != no){
+    
+    str = append(str, letter5)
+    
+  }  
+  
+  test2 = test$test #first subset
+  
+  plz = data.frame(sapply(str, grepl, test2))  #shows which ones are false
+  
+  plz$word = test2
+  
+  plz[(plz == "FALSE")] = NA
+  
+  plz = na.omit(plz)
+  
+  test = plz[,(length(plz)), drop = FALSE]
+  
+}
+
+#####
+must_contain_2 = function(test, alp, str){
+  
+  test2 = test$test #first subset
+  
+  plz = data.frame(sapply(str, grepl, test2))  #shows which ones are false
+  
+  plz$word = test2
+  
+  plz[(plz == "FALSE")] = NA
+  
+  plz = na.omit(plz)
+  
+  test = plz[,(length(plz)), drop = FALSE]
+  
+}
+
+
+
+############################################################
+### words not in list 
+
+#five.word = five.word[!(five.word$dictionary == "malay"),]
+#five.word = data.frame("dictionary" = as.character(five.word))
+
+#five.word = five.word[!(five.word$dictionary == "maine"),]
+#five.word = data.frame("dictionary" = as.character(five.word))
+
+
+
+#answer = data.frame("answer" = as.character())
+#### test space
+
+test = five.word 
+alp = alphabet
+
+#e.g. 
+
+#must be first #test = word_remover(five.word, "x")
+
+#followed by #test = word_remover(test, "x")
+
+#test = location_conf(test, "a", 3)
+
+#test = location_remover(test, "r", 1)
+
+#alp = list_rem
+
+
+##########################
+
+
+
+
+
+###############################################
+
+
+guesser(test,alp)
+
+must_contain_2(test,alp,str)
+
+#### test space
+
+test = five.word 
+alp = alphabet
+
+#e.g. 
+
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(jsonlite)
+library(httr)
+library(stringr)
+library(ggplot2)
+library(rvest)
+print("when you guess a word use lower case")
+print("when you input results, use upper case")
+print("Guess: cares")
+test = five.word
+#test = test[!answer$answer %in% test$dictionary,]
+#test = data.frame("dictionary" = as.character(test))
+word.in = "cares"
+str = c()
+Y = "Y"
+result = readline(prompt="Correct? (YES / NO):")
+
+if(result == "YES") {
+  answer[nrow(answer) + 1,] = word.in
+  print("nice")
+}
+
+if(result == "NO") {
+  print("G for green")
+  print("N for grey")
+  print("Y for yellow")
+  print("input these characters in order")
+  color = readline(prompt = "Enter results: ")
+}
+
+word.out = data.frame('ans' = as.character(color))
+################################################### first letter
+if(substring(word.out[,1], 1, 1) == "G") {
+  test = location_conf(test, substring(word.in,1,1),1)
+} 
+
+if(substring(word.out[,1], 1, 1) == "N") {
+  test = word_remover(test, (substring(word.in,1,1)))
+} 
+
+if(substring(word.out[,1], 1, 1) == "Y") {
+  test = location_remover(test, substring(word.in,1,1),1)
+  str = append(str, substring(word.in,1,1))
+  test = must_contain_2(test, alp, str)
+} 
+################################################### second letter 
+if(substring(word.out[,1], 2, 2) == "G") {
+  test = location_conf(test, substring(word.in,2,2),2)
+} 
+
+if(substring(word.out[,1], 2, 2) == "N") {
+  test = word_remover(test, substring(word.in,2,2))
+} 
+
+if(substring(word.out[,1], 2, 2) == "Y") {
+  test = location_remover(test, substring(word.in,2,2),2)
+  str = append(str, substring(word.in,2,2))
+  test = must_contain_2(test, alp, str)
+} 
+################################################### third letter 
+if(substring(word.out[,1], 3, 3) == "G") {
+  test = location_conf(test, substring(word.in,3,3),3)
+} 
+
+if(substring(word.out[,1], 3, 3) == "N") {
+  test = word_remover(test, substring(word.in,3,3))
+} 
+
+if(substring(word.out[,1], 3, 3) == "Y") {
+  test = location_remover(test, substring(word.in,3,3),3)
+  str = append(str, substring(word.in,3,3))
+  test = must_contain_2(test, alp, str)
+} 
+################################################### fourth letter 
+if(substring(word.out[,1], 4, 4) == "G") {
+  test = location_conf(test, substring(word.in,4,4),4)
+} 
+
+if(substring(word.out[,1], 4, 4) == "N") {
+  test = word_remover(test, substring(word.in,4,4))
+} 
+
+if(substring(word.out[,1], 4, 4) == "Y") {
+  test = location_remover(test, substring(word.in,4,4),4)
+  str = append(str, substring(word.in,4,4))
+  test = must_contain_2(test, alp, str)
+} 
+################################################### fifth letter 
+if(substring(word.out[,1], 5, 5) == "G") {
+  test = location_conf(test, substring(word.in,5,5),5)
+} 
+
+if(substring(word.out[,1], 5, 5) == "N") {
+  test = word_remover(test, substring(word.in,5,5))
+} 
+
+if(substring(word.out[,1], 5, 5) == "Y") {
+  test = location_remover(test, substring(word.in,5,5),5)
+  str = append(str, substring(word.in,5,5))
+  test = must_contain_2(test, alp, str)
+} 
+#######
+
+ if(grepl(word.out, Y) == TRUE) {
+   test = must_contain_2(test, alp, str)
+  } 
+
+
+
+#######
+
+word.in = guesser(test, alp)
+
+
+while(result != "YES") {
+  print("guess this word")
+  print(word.in)
+  result = readline(prompt="Correct? (YES / NO):")
+  
+  if(result == "YES") {
+    print("congrats, word added to answer list")
+    answer[nrow(answer) + 1,] = word.in
+    break
+  }
+  
+  if(result == "NO") {
+    print("G for green")
+    print("N for grey")
+    print("Y for yellow")
+    print("input these characters in order")
+    color = readline(prompt = "Enter results: ")
+  }
+  
+  word.out = data.frame('ans' = as.character(color))
+  ################################################### first letter
+  if(substring(word.out[,1], 1, 1) == "G") {
+    test = location_conf(test, substring(word.in,1,1),1)
+  } 
+  
+  if(substring(word.out[,1], 1, 1) == "N") {
+    test = word_remover(test, substring(word.in,1,1))
+  } 
+  
+  if(substring(word.out[,1], 1, 1) == "Y") {
+    test = location_remover(test, substring(word.in,1,1),1)
+    str = append(str, substring(word.in,1,1))
+    test = must_contain_2(test, alp, str)
+  } 
+  ################################################### second letter 
+  if(substring(word.out[,1], 2, 2) == "G") {
+    test = location_conf(test, substring(word.in,2,2),2)
+  } 
+  
+  if(substring(word.out[,1], 2, 2) == "N") {
+    test = word_remover(test, substring(word.in,2,2))
+  } 
+  
+  if(substring(word.out[,1], 2, 2) == "Y") {
+    test = location_remover(test, substring(word.in,2,2),2)
+    str = append(str, substring(word.in,2,2))
+    test = must_contain_2(test, alp, str)
+  } 
+  ################################################### third letter 
+  if(substring(word.out[,1], 3, 3) == "G") {
+    test = location_conf(test, substring(word.in,3,3),3)
+  } 
+  
+  if(substring(word.out[,1], 3, 3) == "N") {
+    test = word_remover(test, substring(word.in,3,3))
+  } 
+  
+  if(substring(word.out[,1], 3, 3) == "Y") {
+    test = location_remover(test, substring(word.in,3,3),3)
+    str = append(str, substring(word.in,3,3))
+    test = must_contain_2(test, alp, str)
+  } 
+  ################################################### fourth letter 
+  if(substring(word.out[,1], 4, 4) == "G") {
+    test = location_conf(test, substring(word.in,4,4),4)
+  } 
+  
+  if(substring(word.out[,1], 4, 4) == "N") {
+    test = word_remover(test, substring(word.in,4,4))
+  } 
+  
+  if(substring(word.out[,1], 4, 4) == "Y") {
+    test = location_remover(test, substring(word.in,4,4),4)
+    str = append(str, substring(word.in,4,4))
+    test = must_contain_2(test, alp, str)
+  } 
+  ################################################### fifth letter 
+  if(substring(word.out[,1], 5, 5) == "G") {
+    test = location_conf(test, substring(word.in,5,5),5)
+  } 
+  
+  if(substring(word.out[,1], 5, 5) == "N") {
+    test = word_remover(test, substring(word.in,5,5))
+  } 
+  
+  if(substring(word.out[,1], 5, 5) == "Y") {
+    test = location_remover(test, substring(word.in,5,5),5)
+    str = append(str, substring(word.in,5,5))
+    test = must_contain_2(test, alp, str)
+  } 
+  #######
+  
+
+if(grepl(word.out, Y) == TRUE) {
+  test = must_contain_2(test,alp,str)
+  } 
+
+  #######
+  
+word.in = guesser(test, alp)
+  
+  
+  ##########
+  
+}
+
+
+```
+
+```{r}
+if(answer[i,1] %in% five.word[,1]) {
+  print("hmm")
+}
+
+for(i in 1:nrow(answer)) {
+  answer[i,1] == tata[,1]
+}
+
+test = five.word
+
+test = test[!answer$answer %in% test$dictionary,]
+test = data.frame("dictionary" = as.character(test))
+
+
+
+
+for( i in 1:nrow(answer)){
+  if(answer[,1] %in% tata[,1]) {
+    
+    
+    
+  }
+  
+}
+
+test = five.word
+
+
+```
